@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { startReactDsfr } from '@codegouvfr/react-dsfr/spa'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
+import '@codegouvfr/react-dsfr/main.css';
+import '@codegouvfr/react-dsfr/dsfr/utility/utility.main.min.css';
 import './index.css'
 
 // Initialisation du DSFR avec le mode système (clair/sombre par défaut)

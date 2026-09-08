@@ -14,11 +14,7 @@ function App() {
           title: 'Accueil - Communle'
         }}
         id="header"
-        operatorLogo={{
-          alt: 'Communle',
-          imgUrl: 'https://placehold.co/100x50/white/blue?text=Communle',
-          orientation: 'horizontal'
-        }}
+
         serviceTitle="Communle"
         serviceTagline="Le jeu quotidien des communes de France"
       />

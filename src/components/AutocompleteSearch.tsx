@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SearchBar } from "@codegouvfr/react-dsfr/SearchBar";
+import { Input } from "@codegouvfr/react-dsfr/Input";
 import type { Commune } from "../domain/types";
 import { searchCommunes } from "../domain/api";
 
@@ -30,21 +30,16 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
 
   return (
     <div style={{ position: "relative" }}>
-      <SearchBar
-        label="Rechercher une commune"
-        onButtonClick={() => {}}
-        renderInput={({ className, id, placeholder, type }) => (
-          <input
-            className={className}
-            id={id}
-            placeholder={placeholder}
-            type={type}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            disabled={disabled}
-            autoComplete="off"
-          />
-        )}
+      <Input
+        label="Proposer une commune"
+        hintText="Exemple : Paris, Toulouse..."
+        nativeInputProps={{
+          value: query,
+          onChange: (e) => setQuery(e.target.value),
+          disabled: disabled,
+          autoComplete: "off",
+          placeholder: "Tapez le nom d'une commune..."
+        }}
       />
       
       {/* Affichage des résultats en dessous */}
