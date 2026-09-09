@@ -12,6 +12,7 @@ export default function Home() {
   const [mysteryCommune, setMysteryCommune] = useState<Commune | null>(null);
   const [propositions, setPropositions] = useState<Proposition[]>([]);
   const [won, setWon] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Initialisation : on charge la commune du jour
   useEffect(() => {
@@ -46,6 +47,7 @@ export default function Home() {
          return; 
       }
 
+      setIsSyncing(true);
       // Fetch toutes les communes de l'historique en parallèle
       const communesData = await Promise.all(
         inseeCodes.map(code => getCommuneByInsee(code))
@@ -65,6 +67,7 @@ export default function Home() {
 
       setPropositions(newPropositions);
       setWon(hasWon);
+      setIsSyncing(false);
     }
 
     syncUrlHistory();
@@ -105,7 +108,15 @@ export default function Home() {
             <AutocompleteSearch onSelect={handleSelectCommune} disabled={won} />
           )}
           
-          <PropositionHistory propositions={propositions} />
+          {isSyncing && propositions.length === 0 ? (
+            <div className="fr-mt-4w" aria-live="polite" aria-busy="true">
+              <p className="fr-text--italic fr-text--mention">Récupération de l'historique...</p>
+            </div>
+          ) : (
+            <div aria-live="polite" aria-busy={isSyncing}>
+              <PropositionHistory propositions={propositions} />
+            </div>
+          )}
         </>
       )}
     </>
