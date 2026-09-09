@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import AutocompleteSearch from "../components/AutocompleteSearch";
 import PropositionHistory from "../components/PropositionHistory";
 import type { Proposition } from "../components/PropositionHistory";
@@ -7,6 +8,7 @@ import type { Commune } from "../domain/types";
 import { getCommuneByInsee } from "../domain/api";
 
 export default function Home() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [mysteryCommune, setMysteryCommune] = useState<Commune | null>(null);
   const [propositions, setPropositions] = useState<Proposition[]>([]);
   const [won, setWon] = useState(false);
@@ -24,19 +26,63 @@ export default function Home() {
     loadDailyGame();
   }, []);
 
+  // Synchronisation de l'URL vers le state local
+  useEffect(() => {
+    async function syncUrlHistory() {
+      if (!mysteryCommune) return;
+
+      const historyParam = searchParams.get("history");
+      if (!historyParam) {
+        setPropositions([]);
+        setWon(false);
+        return;
+      }
+
+      const inseeCodes = historyParam.split(",").filter(Boolean);
+      
+      // On évite de refaire les appels API si on a déjà exactement le même historique
+      const currentCodes = propositions.map(p => p.commune.codeINSEE);
+      if (inseeCodes.join(",") === currentCodes.reverse().join(",")) {
+         return; 
+      }
+
+      // Fetch toutes les communes de l'historique en parallèle
+      const communesData = await Promise.all(
+        inseeCodes.map(code => getCommuneByInsee(code))
+      );
+
+      let hasWon = false;
+      const newPropositions: Proposition[] = [];
+
+      // Calcule les indices pour chaque commune (le plus récent en premier)
+      for (const commune of communesData) {
+        if (commune) {
+          const indices = compareCommunes(commune, mysteryCommune);
+          newPropositions.unshift({ commune, indices }); // push to front
+          if (indices.distanceKm === 0) hasWon = true;
+        }
+      }
+
+      setPropositions(newPropositions);
+      setWon(hasWon);
+    }
+
+    syncUrlHistory();
+  }, [searchParams, mysteryCommune]);
+
   const handleSelectCommune = (selected: Commune) => {
     if (!mysteryCommune || won) return;
 
-    // Calcul des indices via le domaine
-    const indices = compareCommunes(selected, mysteryCommune);
+    const historyParam = searchParams.get("history");
+    const currentHistory = historyParam ? historyParam.split(",").filter(Boolean) : [];
     
-    // Ajout à l'historique en première position (le plus récent en haut)
-    setPropositions([{ commune: selected, indices }, ...propositions]);
+    // Si la commune est déjà dans l'historique, on l'ignore
+    if (currentHistory.includes(selected.codeINSEE)) return;
 
-    // Victoire ?
-    if (indices.distanceKm === 0) {
-      setWon(true);
-    }
+    const newHistory = [...currentHistory, selected.codeINSEE].join(",");
+
+    // On met à jour l'URL avec uniquement le paramètre history, ce qui nettoie automatiquement le paramètre "q"
+    setSearchParams({ history: newHistory });
   };
 
   return (

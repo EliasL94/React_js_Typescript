@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Input } from "@codegouvfr/react-dsfr/Input";
 import type { Commune } from "../domain/types";
 import { searchCommunes } from "../domain/api";
@@ -9,9 +10,20 @@ interface AutocompleteSearchProps {
 }
 
 export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteSearchProps) {
-  const [query, setQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get("q") || "";
   const [results, setResults] = useState<Commune[]>([]);
 
+  const handleQueryChange = (newQuery: string) => {
+    setSearchParams(prev => {
+      if (newQuery) {
+        prev.set("q", newQuery);
+      } else {
+        prev.delete("q");
+      }
+      return prev;
+    }, { replace: true });
+  };
 
   // Debounce simple pour ne pas spammer l'API
   useEffect(() => {
@@ -35,7 +47,7 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
         hintText="Exemple : Paris, Toulouse..."
         nativeInputProps={{
           value: query,
-          onChange: (e) => setQuery(e.target.value),
+          onChange: (e) => handleQueryChange(e.target.value),
           disabled: disabled,
           autoComplete: "off",
           placeholder: "Tapez le nom d'une commune..."
@@ -67,7 +79,6 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
               style={{ padding: "0.5rem 1rem", cursor: "pointer", borderBottom: "1px solid var(--border-alt-grey)" }}
               onClick={() => {
                 onSelect(c);
-                setQuery(""); // Reset
                 setResults([]);
               }}
               onMouseEnter={(e) => {
