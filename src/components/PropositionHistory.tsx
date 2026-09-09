@@ -1,5 +1,6 @@
 import type { Commune, Indices } from "../domain/types";
 import { Badge } from "@codegouvfr/react-dsfr/Badge";
+import { CallOut } from "@codegouvfr/react-dsfr/CallOut";
 
 export interface Proposition {
   commune: Commune;
@@ -13,9 +14,23 @@ interface PropositionHistoryProps {
 export default function PropositionHistory({ propositions }: PropositionHistoryProps) {
   if (propositions.length === 0) {
     return (
-      <p className="fr-mt-4w fr-text--light">
-        Aucune proposition pour l'instant. Tente ta chance !
-      </p>
+      <div className="fr-mt-4w">
+        <CallOut
+          title="Comment jouer à Communle ?"
+          iconId="fr-icon-information-line"
+        >
+          <p>
+            Le but du jeu est de deviner la commune mystère du jour en un minimum d'essais.
+            À chaque proposition, vous obtiendrez trois indices pour vous aider :
+          </p>
+          <ul>
+            <li><strong>Distance :</strong> la distance à vol d'oiseau entre votre proposition et la commune mystère.</li>
+            <li><strong>Direction :</strong> la direction à suivre pour s'en rapprocher (Nord, Sud, Est, Ouest...).</li>
+            <li><strong>Population :</strong> si la commune mystère est plus ou moins peuplée que votre proposition.</li>
+          </ul>
+          <p className="fr-mt-2v fr-mb-0"><em>Utilisez la barre de recherche ci-dessus pour faire votre première tentative !</em></p>
+        </CallOut>
+      </div>
     );
   }
 
