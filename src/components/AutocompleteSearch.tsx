@@ -141,7 +141,7 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
         {listeOuverte && (
           <div className="autocomplete-panneau">
             {isSearching ? (
-              <p className="fr-p-2w fr-mb-0 fr-text--italic">Recherche en cours...</p>
+              <p className="fr-p-2w fr-mb-0">Recherche en cours...</p>
             ) : enErreur ? (
               <div className="fr-p-2w">
                 <Alert
