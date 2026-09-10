@@ -14,16 +14,20 @@ import { Alert } from "@codegouvfr/react-dsfr/Alert";
 export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteSearchProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
+  const [inputValue, setInputValue] = useState(query);
   const [results, setResults] = useState<Commune[]>([]);
-
   const [isSearching, setIsSearching] = useState(false);
 
   const handleQueryChange = (newQuery: string) => {
+    setInputValue(newQuery);
+    
     if (newQuery.length >= 2) {
       setIsSearching(true);
     } else {
       setIsSearching(false);
+      setResults([]);
     }
+
     setSearchParams(prev => {
       if (newQuery) {
         prev.set("q", newQuery);
@@ -36,7 +40,7 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
 
   // Debounce simple pour ne pas spammer l'API
   useEffect(() => {
-    if (query.length < 2) {
+    if (inputValue.length < 2) {
       setResults([]);
       setIsSearching(false);
       return;
@@ -44,13 +48,18 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
 
     const delayDebounceFn = setTimeout(async () => {
       setIsSearching(true);
-      const communes = await rechercherCommunes(query);
-      setResults(communes);
-      setIsSearching(false);
+      try {
+        const communes = await rechercherCommunes(inputValue);
+        setResults(communes);
+      } catch (err) {
+        setResults([]);
+      } finally {
+        setIsSearching(false);
+      }
     }, 300); // Attend 300ms après la dernière frappe
 
     return () => clearTimeout(delayDebounceFn);
-  }, [query]);
+  }, [inputValue]);
 
   return (
     <div style={{ position: "relative" }}>
@@ -59,7 +68,7 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
           label="Proposer une commune"
           hintText="Exemple : Paris, Toulouse..."
           nativeInputProps={{
-            value: query,
+            value: inputValue,
             onChange: (e) => handleQueryChange(e.target.value),
             disabled: disabled,
             autoComplete: "off",
@@ -68,7 +77,7 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
         />
         
         {/* Affichage des résultats en dessous */}
-        {query.length >= 2 && (
+        {inputValue.length >= 2 && (
           <div
             style={{
               position: "absolute",
@@ -95,6 +104,7 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
                       onSelect(c);
                       setResults([]);
                       setIsSearching(false);
+                      setInputValue("");
                     }}
                     onMouseEnter={(e) => {
                       (e.currentTarget as HTMLElement).style.background = "var(--background-alt-grey)";
@@ -111,7 +121,7 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
               <div className="fr-p-2w" style={{ padding: "1rem" }}>
                  <Alert
                    severity="info"
-                   title={`Aucun résultat pour "${query}"`}
+                   title={`Aucun résultat pour "${inputValue}"`}
                    description="Vérifiez l'orthographe ou essayez un nom de commune plus générique."
                    small
                  />
