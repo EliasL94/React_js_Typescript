@@ -4,6 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { routes } from './routes';
 
+vi.mock('./domain/game', async () => {
+  const actual = await vi.importActual('./domain/game');
+  return {
+    ...actual as any,
+    getMysteryCommuneInsee: vi.fn(() => '75056'),
+  };
+});
+
 const PARIS = {
   nom: 'Paris',
   code: '75056',
@@ -81,17 +89,10 @@ describe("critères d'acceptance US A2", () => {
     ).toBeVisible();
   });
 
-  it('change le titre du document à chaque navigation', async () => {
-    const utilisateur = userEvent.setup();
+  it('change le titre du document', async () => {
     afficher('/');
 
     await waitFor(() => expect(document.title).toBe('Accueil — Communle'));
-
-    await utilisateur.click(
-      screen.getByRole('link', { name: /Voir un écran de fin de partie/ }),
-    );
-
-    await waitFor(() => expect(document.title).toBe('Paris — Communle'));
   });
 
   it('donne son propre titre à la page 404', async () => {

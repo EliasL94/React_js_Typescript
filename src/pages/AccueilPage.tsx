@@ -1,16 +1,94 @@
-import { Button } from '@codegouvfr/react-dsfr/Button';
-import { CallOut } from '@codegouvfr/react-dsfr/CallOut';
+import { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { fr } from '@codegouvfr/react-dsfr/fr';
-import { construireCheminResultat } from '../domain/partie';
 import { useTitreDocument } from '../hooks/useTitreDocument';
-
-const DEMONSTRATION = construireCheminResultat('75056', {
-  statut: 'gagne',
-  essais: 4,
-});
+import AutocompleteSearch from '../components/AutocompleteSearch';
+import PropositionHistory from '../components/PropositionHistory';
+import type { Proposition } from '../components/PropositionHistory';
+import { getMysteryCommuneInsee, compareCommunes } from '../domain/game';
+import { recupererCommune, type Commune } from '../domain/commune';
+import { construireCheminResultat } from '../domain/partie';
 
 export function AccueilPage() {
   useTitreDocument('Accueil');
+  const navigate = useNavigate();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [mysteryCommune, setMysteryCommune] = useState<Commune | null>(null);
+  const [propositions, setPropositions] = useState<Proposition[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Initialisation : on charge la commune du jour
+  useEffect(() => {
+    async function loadDailyGame() {
+      const today = new Date().toISOString().split('T')[0];
+      const inseeCode = getMysteryCommuneInsee(today);
+      
+      const commune = await recupererCommune(inseeCode);
+      setMysteryCommune(commune);
+    }
+    loadDailyGame();
+  }, []);
+
+  // Synchronisation de l'URL vers le state local
+  useEffect(() => {
+    async function syncUrlHistory() {
+      if (!mysteryCommune) return;
+
+      const historyParam = searchParams.get('history');
+      if (!historyParam) {
+        setPropositions([]);
+        return;
+      }
+
+      const inseeCodes = historyParam.split(',').filter(Boolean);
+      
+      // On évite de refaire les appels API si on a déjà exactement le même historique
+      const currentCodes = propositions.map((p) => p.commune.code);
+      if (inseeCodes.join(',') === currentCodes.reverse().join(',')) {
+         return; 
+      }
+
+      setIsSyncing(true);
+      // Fetch toutes les communes de l'historique en parallèle
+      const communesData = await Promise.all(
+        inseeCodes.map((code) => recupererCommune(code))
+      );
+
+      let hasWon = false;
+      const newPropositions: Proposition[] = [];
+
+      for (const commune of communesData) {
+        if (commune) {
+          const indices = compareCommunes(commune, mysteryCommune);
+          newPropositions.unshift({ commune, indices }); // push to front
+          if (indices.distanceKm === 0) hasWon = true;
+        }
+      }
+
+      setPropositions(newPropositions);
+      setIsSyncing(false);
+
+      if (hasWon) {
+        navigate(construireCheminResultat(mysteryCommune.code, { statut: 'gagne', essais: newPropositions.length }));
+      }
+    }
+
+    syncUrlHistory();
+  }, [searchParams, mysteryCommune, navigate, propositions]);
+
+  const handleSelectCommune = (selected: Commune) => {
+    if (!mysteryCommune) return;
+
+    const historyParam = searchParams.get('history');
+    const currentHistory = historyParam ? historyParam.split(',').filter(Boolean) : [];
+    
+    // Si la commune est déjà dans l'historique, on l'ignore
+    if (currentHistory.includes(selected.code)) return;
+
+    const newHistory = [...currentHistory, selected.code].join(',');
+    setSearchParams({ history: newHistory });
+  };
 
   return (
     <>
@@ -20,14 +98,23 @@ export function AccueilPage() {
         trouvez-la en un minimum d'essais.
       </p>
 
-      <CallOut title="La partie du jour arrive bientôt">
-        La saisie et les indices sont l'objet de l'US A1. L'écran de fin de partie,
-        lui, est déjà en place sur sa route dédiée.
-      </CallOut>
-
-      <Button linkProps={{ to: DEMONSTRATION }} priority="secondary">
-        Voir un écran de fin de partie
-      </Button>
+      {!mysteryCommune ? (
+        <div className={fr.cx('fr-mt-4w')}>Chargement du jeu...</div>
+      ) : (
+        <>
+          <AutocompleteSearch onSelect={handleSelectCommune} />
+          
+          {isSyncing && propositions.length === 0 ? (
+            <div className={fr.cx('fr-mt-4w')} aria-live="polite" aria-busy="true">
+              <p className="fr-text--italic fr-text--mention">Récupération de l'historique...</p>
+            </div>
+          ) : (
+            <div aria-live="polite" aria-busy={isSyncing}>
+              <PropositionHistory propositions={propositions} />
+            </div>
+          )}
+        </>
+      )}
     </>
   );
 }

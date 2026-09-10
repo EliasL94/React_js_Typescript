@@ -114,3 +114,30 @@ export async function recupererCommune(
     throw new ApiIndisponibleError("La réponse de l'API Geo est illisible.");
   }
 }
+
+export async function rechercherCommunes(
+  query: string,
+  options: { signal?: AbortSignal } = {}
+): Promise<Commune[]> {
+  let reponse: Response;
+  try {
+    reponse = await fetch(`${URL_API}?nom=${encodeURIComponent(query)}&fields=${CHAMPS}&boost=population&limit=5`, {
+      signal: options.signal,
+    });
+  } catch (erreur) {
+    if (erreur instanceof DOMException && erreur.name === 'AbortError') throw erreur;
+    throw new ApiIndisponibleError("L'API Geo n'a pas pu être jointe.");
+  }
+
+  if (!reponse.ok) {
+    throw new ApiIndisponibleError(`L'API Geo a répondu ${reponse.status}.`);
+  }
+
+  try {
+    const data = await reponse.json();
+    if (!Array.isArray(data)) return [];
+    return data.map(normaliserCommune);
+  } catch {
+    throw new ApiIndisponibleError("La réponse de l'API Geo est illisible.");
+  }
+}
