@@ -7,7 +7,7 @@ import PropositionHistory from '../components/PropositionHistory';
 import type { Proposition } from '../components/PropositionHistory';
 import { getMysteryCommuneInsee, compareCommunes, estTrouvee } from '../domain/game';
 import { recupererCommune, type Commune } from '../domain/commune';
-import { construireCheminResultat } from '../domain/partie';
+import { construireCheminResultat, NB_ESSAIS_MAX } from '../domain/partie';
 
 export function AccueilPage() {
   useTitreDocument('Accueil');
@@ -73,8 +73,8 @@ export function AccueilPage() {
 
       if (hasWon) {
         navigate(construireCheminResultat(mysteryCommune.code, { statut: 'gagne', essais: newPropositions.length }));
-      } else if (newPropositions.length >= 6) {
-        navigate(construireCheminResultat(mysteryCommune.code, { statut: 'perdu', essais: 6 }));
+      } else if (newPropositions.length >= NB_ESSAIS_MAX) {
+        navigate(construireCheminResultat(mysteryCommune.code, { statut: 'perdu', essais: NB_ESSAIS_MAX }));
       }
     }
 
@@ -114,7 +114,7 @@ export function AccueilPage() {
             </div>
           ) : (
             <div aria-live="polite" aria-busy={isSyncing}>
-              <PropositionHistory propositions={propositions} />
+              <PropositionHistory propositions={propositions} nbEssaisMax={NB_ESSAIS_MAX} />
             </div>
           )}
         </>

@@ -2,6 +2,7 @@ import type { Commune } from "../domain/commune";
 import type { Indices } from "../domain/game";
 import { Badge } from "@codegouvfr/react-dsfr/Badge";
 import { CallOut } from "@codegouvfr/react-dsfr/CallOut";
+import { Table } from "@codegouvfr/react-dsfr/Table";
 
 export interface Proposition {
   commune: Commune;
@@ -10,9 +11,41 @@ export interface Proposition {
 
 interface PropositionHistoryProps {
   propositions: Proposition[];
+  /** Nombre d'essais dont dispose le joueur, affiché à côté du décompte. */
+  nbEssaisMax?: number;
 }
 
-export default function PropositionHistory({ propositions }: PropositionHistoryProps) {
+const MENTION_ABSENTE = "Non renseigné";
+
+function libelleDistance(distanceKm: number | null): string {
+  if (distanceKm === null) return MENTION_ABSENTE;
+  if (distanceKm === 0) return "Trouvé !";
+  return `${distanceKm} km`;
+}
+
+function severiteDistance(distanceKm: number | null): "success" | "warning" | "error" | "info" {
+  if (distanceKm === null) return "info";
+  if (distanceKm === 0) return "success";
+  if (distanceKm < 50) return "warning";
+  return "error";
+}
+
+function libellePopulation(populationGap: Indices["populationGap"]): string {
+  if (populationGap === "plus") return "Plus peuplée";
+  if (populationGap === "moins") return "Moins peuplée";
+  if (populationGap === "egal") return "Population égale";
+  return MENTION_ABSENTE;
+}
+
+function libelleCommune(commune: Commune): string {
+  const nom = commune.nom.trim() === "" ? MENTION_ABSENTE : commune.nom;
+  return commune.departement === null ? nom : `${nom} (${commune.departement.nom})`;
+}
+
+export default function PropositionHistory({
+  propositions,
+  nbEssaisMax = 6,
+}: PropositionHistoryProps) {
   if (propositions.length === 0) {
     return (
       <div className="fr-mt-4w">
@@ -34,59 +67,31 @@ export default function PropositionHistory({ propositions }: PropositionHistoryP
     );
   }
 
+  const nombre = propositions.length;
+  // La légende d'un tableau est rendue avant les lignes et lue en premier :
+  // c'est elle qui annonce le décompte, pas un titre posé au-dessus.
+  const legende = `${nombre} proposition${nombre > 1 ? "s" : ""} sur ${nbEssaisMax}`;
+
   return (
     <div className="fr-mt-4w">
       <h3>Historique de tes propositions</h3>
-      <div className="fr-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Commune proposée</th>
-              <th>Distance</th>
-              <th>Direction</th>
-              <th>Population</th>
-            </tr>
-          </thead>
-          <tbody>
-            {propositions.map((prop, index) => {
-              const { commune, indices } = prop;
-              
-              // Déterminer la couleur du badge de distance
-              let distanceBadgeType: "success" | "warning" | "error" | "info" = "error";
-              if (indices.distanceKm === null) distanceBadgeType = "info";
-              else if (indices.distanceKm === 0) distanceBadgeType = "success";
-              else if (indices.distanceKm < 50) distanceBadgeType = "warning";
-
-              return (
-                <tr key={index}>
-                  <td>
-                    <strong>{commune.nom}</strong> ({commune.departement?.nom})
-                  </td>
-                  <td>
-                    <Badge severity={distanceBadgeType}>
-                      {indices.distanceKm === null
-                        ? "Non renseigné"
-                        : indices.distanceKm === 0
-                          ? "Trouvé !"
-                          : `${indices.distanceKm} km`}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Badge severity="info" noIcon>
-                      {indices.direction ?? "Non renseigné"}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Badge severity="info" noIcon>
-                      {indices.populationGap === "plus" ? "⬆️ Plus peuplée" : indices.populationGap === "moins" ? "⬇️ Moins peuplée" : "Égale"}
-                    </Badge>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <Table
+        caption={legende}
+        bordered
+        headers={["Commune proposée", "Distance", "Direction", "Population"]}
+        data={propositions.map(({ commune, indices }) => [
+          libelleCommune(commune),
+          <Badge key="distance" severity={severiteDistance(indices.distanceKm)}>
+            {libelleDistance(indices.distanceKm)}
+          </Badge>,
+          <Badge key="direction" severity="info" noIcon>
+            {indices.direction ?? MENTION_ABSENTE}
+          </Badge>,
+          <Badge key="population" severity="info" noIcon>
+            {libellePopulation(indices.populationGap)}
+          </Badge>,
+        ])}
+      />
     </div>
   );
 }
