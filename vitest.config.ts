@@ -10,7 +10,9 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html', 'lcov'],
+      // json-summary alimente le récapitulatif affiché par la CI ; html est le
+      // rapport consultable, publié en artefact à chaque exécution.
+      reporter: ['text', 'html', 'lcov', 'json-summary'],
       reportsDirectory: './coverage',
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'src/main.tsx', 'src/setupTests.ts'],

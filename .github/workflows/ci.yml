@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+# Une nouvelle poussée sur une branche annule l'exécution précédente : inutile
+# de faire tourner deux fois la même vérification sur un travail dépassé.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    name: Lint, types, tests et couverture
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Vérification des types
+        run: npm run typecheck
+
+      - name: Tests et couverture
+        run: npm run test:coverage
+
+      # Le sujet demande que le rapport de couverture soit accessible depuis la
+      # CI : il est publié en artefact, téléchargeable depuis la page du run.
+      - name: Publier le rapport de couverture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-de-couverture
+          path: coverage/
+          retention-days: 30
+
+      # Les seuils sont déjà appliqués par Vitest (l'étape échoue s'ils ne sont
+      # pas tenus). Ce récapitulatif évite d'avoir à télécharger l'artefact pour
+      # connaître les chiffres.
+      - name: Récapituler la couverture
+        if: always()
+        run: |
+          if [ ! -f coverage/coverage-summary.json ]; then
+            echo "Pas de rapport de couverture à résumer." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const resume = JSON.parse(readFileSync("coverage/coverage-summary.json", "utf8"));
+            const pct = (bloc) => `${bloc.pct.toFixed(2)} %`;
+            const lignes = [
+              "## Couverture",
+              "",
+              "| Périmètre | Lignes | Branches | Fonctions |",
+              "| --- | --- | --- | --- |",
+              `| Global | ${pct(resume.total.lines)} | ${pct(resume.total.branches)} | ${pct(resume.total.functions)} |`,
+            ];
+            const domaine = Object.entries(resume).filter(([chemin]) => chemin.includes("/src/domain/"));
+            for (const [chemin, bloc] of domaine) {
+              const nom = chemin.split("/src/").pop();
+              lignes.push(`| ${nom} | ${pct(bloc.lines)} | ${pct(bloc.branches)} | ${pct(bloc.functions)} |`);
+            }
+            lignes.push("", "Seuils exigés : 90 % lignes et branches sur `src/domain`, 60 % lignes sur `src`.");
+            console.log(lignes.join("\n"));
+          ' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build de production
+        run: npm run build
