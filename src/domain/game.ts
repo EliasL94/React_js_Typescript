@@ -104,7 +104,7 @@ export function compareCommunes(proposition: Commune, solution: Commune): Indice
  * Liste d'une cinquantaine de codes INSEE de communes françaises connues
  * pour servir de base de tirage au jeu.
  */
-const FAMOUS_COMMUNES_INSEE = [
+export const COMMUNES_DU_TIRAGE = [
   "75056", "13055", "69123", "31555", "06088", "44109", "34172", "67482", "33063", "59350",
   "35238", "51454", "42218", "83137", "76351", "38185", "21231", "49007", "30189", "97411",
   "72181", "13001", "29019", "80021", "37261", "87085", "63113", "86194", "25056", "57463",
@@ -113,17 +113,54 @@ const FAMOUS_COMMUNES_INSEE = [
 ];
 
 /**
- * Fonction de tirage déterministe.
- * Rend TOUJOURS le même code INSEE pour une date donnée.
+ * Empreinte FNV-1a sur 32 bits.
+ *
+ * Le tirage additionnait auparavant les codes de caractères de la date. Cette
+ * somme n'a aucun effet d'avalanche : "2026-09-10" et "2026-09-11" donnent deux
+ * nombres qui ne diffèrent que de 1, donc deux cases voisines dans la liste.
+ * Le jeu restait déterministe, mais devenait devinable — qui trouvait la commune
+ * du jour connaissait celle du lendemain — et 400 jours consécutifs ne sortaient
+ * que 19 communes sur 50.
+ *
+ * FNV-1a mélange chaque octet par un XOR suivi d'une multiplication par un
+ * nombre premier. Seul, il ne suffit pas ici : deux dates du même mois ne
+ * diffèrent que par leur dernier caractère, et ce dernier octet ne traverse
+ * qu'une multiplication avant la sortie. L'écart se retrouve alors intact dans
+ * le résultat — Math.imul(1, 0x01000193) % 50 vaut 19, et le tirage avançait de
+ * 19 cases chaque jour au lieu d'une.
+ *
+ * Le finisseur de MurmurHash3 est donc appliqué en sortie : trois décalages et
+ * deux multiplications qui propagent les bits de poids faible vers les bits de
+ * poids fort. Un seul caractère qui change redistribue alors tout le résultat.
+ *
+ * Math.imul garde les multiplications sur 32 bits, et >>> 0 rend le résultat
+ * non signé.
  */
-export function getMysteryCommuneInsee(dateStr: string): string {
-  // Convertit la date (ex: "2026-09-08") en un nombre simple
-  let seed = 0;
-  for (let i = 0; i < dateStr.length; i++) {
-    seed += dateStr.charCodeAt(i);
+function empreinte(texte: string): number {
+  const BASE = 0x811c9dc5;
+  const PREMIER = 0x01000193;
+
+  let melange = BASE;
+  for (let i = 0; i < texte.length; i++) {
+    melange ^= texte.charCodeAt(i);
+    melange = Math.imul(melange, PREMIER);
   }
 
-  // Utilise le reste de la division euclidienne pour toujours tomber dans le tableau
-  const index = seed % FAMOUS_COMMUNES_INSEE.length;
-  return FAMOUS_COMMUNES_INSEE[index];
+  melange ^= melange >>> 16;
+  melange = Math.imul(melange, 0x85ebca6b);
+  melange ^= melange >>> 13;
+  melange = Math.imul(melange, 0xc2b2ae35);
+  melange ^= melange >>> 16;
+
+  return melange >>> 0;
+}
+
+/**
+ * Tirage déterministe : la même date rend toujours la même commune, sans
+ * serveur ni état partagé. Deux joueurs qui jouent le même jour cherchent donc
+ * la même commune, comme le sujet l'exige.
+ */
+export function getMysteryCommuneInsee(dateStr: string): string {
+  const index = empreinte(dateStr) % COMMUNES_DU_TIRAGE.length;
+  return COMMUNES_DU_TIRAGE[index];
 }

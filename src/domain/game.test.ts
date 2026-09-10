@@ -5,6 +5,7 @@ import {
   compareCommunes,
   estTrouvee,
   getDirection,
+  COMMUNES_DU_TIRAGE,
   getMysteryCommuneInsee,
 } from './game';
 
@@ -139,6 +140,24 @@ describe('compareCommunes', () => {
   });
 });
 
+/** Les 365 jours d'une année, au format rendu par toISOString(). */
+function joursDe(annee: number): string[] {
+  const jours: string[] = [];
+  const curseur = new Date(Date.UTC(annee, 0, 1));
+
+  while (curseur.getUTCFullYear() === annee) {
+    jours.push(curseur.toISOString().split('T')[0]);
+    curseur.setUTCDate(curseur.getUTCDate() + 1);
+  }
+
+  return jours;
+}
+
+const JOURS_2026 = joursDe(2026);
+const JOURS_CONSECUTIFS = JOURS_2026.slice(0, -1).map(
+  (jour, index) => [jour, JOURS_2026[index + 1]] as const,
+);
+
 describe('getMysteryCommuneInsee', () => {
   it('rend toujours la même commune pour une date donnée', () => {
     expect(getMysteryCommuneInsee('2026-09-10')).toBe(getMysteryCommuneInsee('2026-09-10'));
@@ -156,7 +175,49 @@ describe('getMysteryCommuneInsee', () => {
 
   it('reste dans la liste quelle que soit la date', () => {
     for (const jour of ['2026-01-01', '2026-06-15', '2026-12-31', '2027-02-28']) {
-      expect(getMysteryCommuneInsee(jour)).toMatch(/^(?:\d{2}|2[AB])\d{3}$/);
+      expect(COMMUNES_DU_TIRAGE).toContain(getMysteryCommuneInsee(jour));
     }
+  });
+
+  // Les trois cas suivants existent parce que le tirage précédent — une somme
+  // des codes de caractères de la date — passait tous les tests ci-dessus tout
+  // en étant devinable : deux jours qui se suivaient donnaient deux cases qui
+  // se suivaient dans la liste.
+  it('ne laisse pas un écart dominer d’un jour au suivant', () => {
+    const occurrences = new Map<number, number>();
+
+    for (const [veille, lendemain] of JOURS_CONSECUTIFS) {
+      const iVeille = COMMUNES_DU_TIRAGE.indexOf(getMysteryCommuneInsee(veille));
+      const iLendemain = COMMUNES_DU_TIRAGE.indexOf(getMysteryCommuneInsee(lendemain));
+      const ecart =
+        (iLendemain - iVeille + COMMUNES_DU_TIRAGE.length) % COMMUNES_DU_TIRAGE.length;
+
+      occurrences.set(ecart, (occurrences.get(ecart) ?? 0) + 1);
+    }
+
+    // Un écart qui revient presque tous les jours signerait une liste parcourue
+    // dans l'ordre : trouver la commune du jour livrerait celle du lendemain.
+    const ecartLePlusFrequent = Math.max(...occurrences.values());
+
+    expect(ecartLePlusFrequent / JOURS_CONSECUTIFS.length).toBeLessThan(0.25);
+  });
+
+  it('parcourt largement la liste sur une année', () => {
+    const tirees = new Set(joursDe(2026).map(getMysteryCommuneInsee));
+
+    expect(tirees.size).toBeGreaterThanOrEqual(COMMUNES_DU_TIRAGE.length - 5);
+  });
+
+  // Le tirage est uniforme et sans mémoire : deux jours de suite peuvent tomber
+  // sur la même commune, et ce serait un défaut de l'interdire — la retirer du
+  // chapeau biaiserait la distribution. Ce qui compte est que cela reste rare,
+  // de l'ordre d'un jour sur cinquante.
+  it('ne répète la veille qu’exceptionnellement', () => {
+    const repetitions = JOURS_CONSECUTIFS.filter(
+      ([veille, lendemain]) =>
+        getMysteryCommuneInsee(veille) === getMysteryCommuneInsee(lendemain),
+    ).length;
+
+    expect(repetitions / JOURS_CONSECUTIFS.length).toBeLessThan(0.05);
   });
 });
