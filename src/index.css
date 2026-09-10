@@ -8,3 +8,43 @@ body {
 #contenu {
   flex: 1 0 auto;
 }
+
+.autocomplete {
+  position: relative;
+}
+
+.autocomplete-panneau {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background-color: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  box-shadow: var(--overlap-shadow);
+}
+
+.autocomplete-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.autocomplete-option {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  background-color: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-default-grey);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.autocomplete-option:hover {
+  background-color: var(--background-alt-grey);
+}

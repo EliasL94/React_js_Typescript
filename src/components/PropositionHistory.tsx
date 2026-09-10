@@ -52,8 +52,9 @@ export default function PropositionHistory({ propositions }: PropositionHistoryP
               const { commune, indices } = prop;
               
               // Déterminer la couleur du badge de distance
-              let distanceBadgeType: "success" | "warning" | "error" = "error";
-              if (indices.distanceKm === 0) distanceBadgeType = "success";
+              let distanceBadgeType: "success" | "warning" | "error" | "info" = "error";
+              if (indices.distanceKm === null) distanceBadgeType = "info";
+              else if (indices.distanceKm === 0) distanceBadgeType = "success";
               else if (indices.distanceKm < 50) distanceBadgeType = "warning";
 
               return (
@@ -63,12 +64,16 @@ export default function PropositionHistory({ propositions }: PropositionHistoryP
                   </td>
                   <td>
                     <Badge severity={distanceBadgeType}>
-                      {indices.distanceKm === 0 ? "Trouvé !" : `${indices.distanceKm} km`}
+                      {indices.distanceKm === null
+                        ? "Non renseigné"
+                        : indices.distanceKm === 0
+                          ? "Trouvé !"
+                          : `${indices.distanceKm} km`}
                     </Badge>
                   </td>
                   <td>
                     <Badge severity="info" noIcon>
-                      {indices.direction}
+                      {indices.direction ?? "Non renseigné"}
                     </Badge>
                   </td>
                   <td>

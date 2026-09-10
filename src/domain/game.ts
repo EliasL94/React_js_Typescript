@@ -1,8 +1,9 @@
 import type { Commune } from "./commune";
 
 export type Indices = {
-  distanceKm: number;
-  direction: string;
+  /** null quand un des deux centres manque : l'API ne les garantit pas. */
+  distanceKm: number | null;
+  direction: string | null;
   populationGap: "plus" | "moins" | "egal" | "inconnu";
 };
 
@@ -20,21 +21,21 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
   const R = 6371; // Rayon de la Terre en km
   const dLat = toRadians(lat2 - lat1);
   const dLon = toRadians(lon2 - lon1);
-  
-  const a = 
+
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * 
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
-  
+
   // On arrondit à l'entier le plus proche
   return Math.round(distance);
 }
 
 /**
- * Détermine la direction cardinale (Nord, Sud, Est, Ouest, etc.) 
+ * Détermine la direction cardinale (Nord, Sud, Est, Ouest, etc.)
  * pour aller du point 1 (proposition) vers le point 2 (solution).
  */
 export function getDirection(lat1: number, lon1: number, lat2: number, lon2: number): string {
@@ -42,7 +43,7 @@ export function getDirection(lat1: number, lon1: number, lat2: number, lon2: num
   const dLon = lon2 - lon1;
 
   // Si on est vraiment très très proche (genre même commune)
-  if (Math.abs(dLat) < 0.01 && Math.abs(dLon) < 0.01) return "📍";
+  if (Math.abs(dLat) < 0.01 && Math.abs(dLon) < 0.01) return "Sur place";
 
   let ns = "";
   let ew = "";
@@ -59,11 +60,27 @@ export function getDirection(lat1: number, lon1: number, lat2: number, lon2: num
 }
 
 /**
+ * La victoire se décide sur le code INSEE, jamais sur la distance.
+ * Une commune dont l'API ne donne pas le centre a une distance inconnue :
+ * la confondre avec un zéro déclarerait une victoire imméritée.
+ */
+export function estTrouvee(proposition: Commune, solution: Commune): boolean {
+  return proposition.code !== "" && proposition.code === solution.code;
+}
+
+/**
  * Compare la proposition du joueur avec la solution pour générer les 3 indices.
  */
 export function compareCommunes(proposition: Commune, solution: Commune): Indices {
+  let populationGap: "plus" | "moins" | "egal" | "inconnu" = "inconnu";
+  if (solution.population !== null && proposition.population !== null) {
+    populationGap = "egal";
+    if (solution.population > proposition.population) populationGap = "plus";
+    if (solution.population < proposition.population) populationGap = "moins";
+  }
+
   if (!proposition.centre || !solution.centre) {
-     return { distanceKm: 0, direction: "N/A", populationGap: "inconnu" };
+    return { distanceKm: null, direction: null, populationGap };
   }
 
   const distanceKm = calculateDistance(
@@ -75,14 +92,6 @@ export function compareCommunes(proposition: Commune, solution: Commune): Indice
     proposition.centre.latitude, proposition.centre.longitude,
     solution.centre.latitude, solution.centre.longitude
   );
-
-  let populationGap: "plus" | "moins" | "egal" | "inconnu" = "egal";
-  if (solution.population !== null && proposition.population !== null) {
-    if (solution.population > proposition.population) populationGap = "plus";
-    if (solution.population < proposition.population) populationGap = "moins";
-  } else {
-    populationGap = "inconnu";
-  }
 
   return {
     distanceKm,
@@ -104,7 +113,7 @@ const FAMOUS_COMMUNES_INSEE = [
 ];
 
 /**
- * Fonction de tirage déterministe. 
+ * Fonction de tirage déterministe.
  * Rend TOUJOURS le même code INSEE pour une date donnée.
  */
 export function getMysteryCommuneInsee(dateStr: string): string {
@@ -113,7 +122,7 @@ export function getMysteryCommuneInsee(dateStr: string): string {
   for (let i = 0; i < dateStr.length; i++) {
     seed += dateStr.charCodeAt(i);
   }
-  
+
   // Utilise le reste de la division euclidienne pour toujours tomber dans le tableau
   const index = seed % FAMOUS_COMMUNES_INSEE.length;
   return FAMOUS_COMMUNES_INSEE[index];

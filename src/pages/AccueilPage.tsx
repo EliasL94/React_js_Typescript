@@ -5,7 +5,7 @@ import { useTitreDocument } from '../hooks/useTitreDocument';
 import AutocompleteSearch from '../components/AutocompleteSearch';
 import PropositionHistory from '../components/PropositionHistory';
 import type { Proposition } from '../components/PropositionHistory';
-import { getMysteryCommuneInsee, compareCommunes } from '../domain/game';
+import { getMysteryCommuneInsee, compareCommunes, estTrouvee } from '../domain/game';
 import { recupererCommune, type Commune } from '../domain/commune';
 import { construireCheminResultat } from '../domain/partie';
 
@@ -64,7 +64,7 @@ export function AccueilPage() {
         if (commune) {
           const indices = compareCommunes(commune, mysteryCommune);
           newPropositions.unshift({ commune, indices }); // push to front
-          if (indices.distanceKm === 0) hasWon = true;
+          if (estTrouvee(commune, mysteryCommune)) hasWon = true;
         }
       }
 
