@@ -9,6 +9,8 @@ interface AutocompleteSearchProps {
   disabled?: boolean;
 }
 
+import { Alert } from "@codegouvfr/react-dsfr/Alert";
+
 export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteSearchProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
@@ -66,8 +68,8 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
         />
         
         {/* Affichage des résultats en dessous */}
-        {(results.length > 0 || isSearching) && (
-          <ul
+        {query.length >= 2 && (
+          <div
             style={{
               position: "absolute",
               top: "100%",
@@ -76,39 +78,46 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
               background: "var(--background-default-grey)",
               border: "1px solid var(--border-default-grey)",
               zIndex: 10,
-              listStyle: "none",
-              margin: 0,
-              padding: 0,
-              maxHeight: "300px",
-              overflowY: "auto",
               boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
             }}
           >
-            {isSearching && (
-              <li style={{ padding: "1rem", textAlign: "center", fontStyle: "italic", color: "var(--text-mention-grey)" }}>
+            {isSearching ? (
+              <div style={{ padding: "1rem", textAlign: "center", fontStyle: "italic", color: "var(--text-mention-grey)" }}>
                 Recherche en cours...
-              </li>
+              </div>
+            ) : results.length > 0 ? (
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, maxHeight: "300px", overflowY: "auto" }}>
+                {results.map((c) => (
+                  <li
+                    key={c.code}
+                    style={{ padding: "0.5rem 1rem", cursor: "pointer", borderBottom: "1px solid var(--border-alt-grey)" }}
+                    onClick={() => {
+                      onSelect(c);
+                      setResults([]);
+                      setIsSearching(false);
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "var(--background-alt-grey)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "transparent";
+                    }}
+                  >
+                    {c.nom} ({c.departement?.nom})
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="fr-p-2w" style={{ padding: "1rem" }}>
+                 <Alert
+                   severity="info"
+                   title={`Aucun résultat pour "${query}"`}
+                   description="Vérifiez l'orthographe ou essayez un nom de commune plus générique."
+                   small
+                 />
+              </div>
             )}
-            {!isSearching && results.map((c) => (
-              <li
-                key={c.code}
-                style={{ padding: "0.5rem 1rem", cursor: "pointer", borderBottom: "1px solid var(--border-alt-grey)" }}
-                onClick={() => {
-                  onSelect(c);
-                  setResults([]);
-                  setIsSearching(false);
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = "var(--background-alt-grey)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = "transparent";
-                }}
-              >
-                {c.nom} ({c.departement?.nom})
-              </li>
-            ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
