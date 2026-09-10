@@ -37,7 +37,9 @@ export function AccueilPage() {
 
       const historyParam = searchParams.get('history');
       if (!historyParam) {
-        setPropositions([]);
+        if (propositions.length > 0) {
+          setPropositions([]);
+        }
         return;
       }
 
