@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Input } from "@codegouvfr/react-dsfr/Input";
 import { Alert } from "@codegouvfr/react-dsfr/Alert";
 import type { Commune } from "../domain/commune";
@@ -17,6 +17,11 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
   const [results, setResults] = useState<Commune[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [enErreur, setEnErreur] = useState(false);
+  const [indexActif, setIndexActif] = useState(-1);
+  const [listeFermee, setListeFermee] = useState(false);
+
+  const idListe = useId();
+  const optionId = (index: number) => `${idListe}-option-${index}`;
 
   // Numéro de la recherche en cours. Une réponse qui revient avec un numéro
   // périmé est jetée : sans ça, une requête lente partie avant une autre
@@ -28,6 +33,8 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
   const auChangement = (valeur: string) => {
     setInputValue(valeur);
     setEnErreur(false);
+    setIndexActif(-1);
+    setListeFermee(false);
 
     if (valeur.length < LONGUEUR_MINIMALE) {
       rechercheCourante.current += 1;
@@ -68,7 +75,46 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
     };
   }, [inputValue]);
 
-  const listeOuverte = inputValue.length >= LONGUEUR_MINIMALE;
+  const choisir = (commune: Commune) => {
+    rechercheCourante.current += 1;
+    onSelect(commune);
+    setResults([]);
+    setIsSearching(false);
+    setInputValue("");
+    setIndexActif(-1);
+    setListeFermee(false);
+  };
+
+  const listeOuverte =
+    !listeFermee && inputValue.length >= LONGUEUR_MINIMALE;
+  const optionsNavigables = listeOuverte && !isSearching && !enErreur && results.length > 0;
+
+  const auClavier = (evenement: React.KeyboardEvent<HTMLInputElement>) => {
+    if (evenement.key === "Escape") {
+      setListeFermee(true);
+      setIndexActif(-1);
+      return;
+    }
+
+    if (!optionsNavigables) return;
+
+    if (evenement.key === "ArrowDown") {
+      evenement.preventDefault();
+      setIndexActif((actuel) => (actuel + 1) % results.length);
+      return;
+    }
+
+    if (evenement.key === "ArrowUp") {
+      evenement.preventDefault();
+      setIndexActif((actuel) => (actuel <= 0 ? results.length - 1 : actuel - 1));
+      return;
+    }
+
+    if (evenement.key === "Enter" && indexActif >= 0) {
+      evenement.preventDefault();
+      choisir(results[indexActif]);
+    }
+  };
 
   return (
     <div className="autocomplete">
@@ -79,9 +125,16 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
           nativeInputProps={{
             value: inputValue,
             onChange: (e) => auChangement(e.target.value),
+            onKeyDown: auClavier,
             disabled: disabled,
             autoComplete: "off",
             placeholder: "Tapez le nom d’une commune...",
+            role: "combobox",
+            "aria-expanded": optionsNavigables,
+            "aria-controls": idListe,
+            "aria-autocomplete": "list",
+            "aria-activedescendant":
+              indexActif >= 0 ? optionId(indexActif) : undefined,
           }}
         />
 
@@ -99,23 +152,26 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
                 />
               </div>
             ) : results.length > 0 ? (
-              <ul className="autocomplete-liste">
-                {results.map((c) => (
-                  <li key={c.code}>
-                    <button
-                      type="button"
-                      className="autocomplete-option"
-                      onClick={() => {
-                        rechercheCourante.current += 1;
-                        onSelect(c);
-                        setResults([]);
-                        setIsSearching(false);
-                        setInputValue("");
-                      }}
-                    >
-                      {c.nom}
-                      {c.departement !== null && ` (${c.departement.nom})`}
-                    </button>
+              <ul className="autocomplete-liste" id={idListe} role="listbox" aria-label="Communes proposées">
+                {results.map((c, index) => (
+                  <li
+                    key={c.code}
+                    id={optionId(index)}
+                    role="option"
+                    aria-selected={index === indexActif}
+                    className={
+                      index === indexActif
+                        ? "autocomplete-option autocomplete-option--active"
+                        : "autocomplete-option"
+                    }
+                    onMouseDown={(e) => {
+                      // Empêche le champ de perdre le focus avant la sélection.
+                      e.preventDefault();
+                      choisir(c);
+                    }}
+                  >
+                    {c.nom}
+                    {c.departement !== null && ` (${c.departement.nom})`}
                   </li>
                 ))}
               </ul>

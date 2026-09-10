@@ -46,7 +46,7 @@ describe('US C1 : frappe et annulation', () => {
     const utilisateur = taper();
 
     render(<AutocompleteSearch onSelect={() => {}} />);
-    await utilisateur.type(screen.getByRole('textbox'), 'Villeurban');
+    await utilisateur.type(screen.getByRole('combobox'), 'Villeurban');
 
     await avancer(400);
 
@@ -66,7 +66,7 @@ describe('US C1 : frappe et annulation', () => {
     const utilisateur = taper();
 
     render(<AutocompleteSearch onSelect={() => {}} />);
-    const champ = screen.getByRole('textbox');
+    const champ = screen.getByRole('combobox');
 
     await utilisateur.type(champ, 'Pa');
     await avancer(350);
@@ -94,7 +94,7 @@ describe('US C1 : frappe et annulation', () => {
     const utilisateur = taper();
 
     render(<AutocompleteSearch onSelect={() => {}} />);
-    const champ = screen.getByRole('textbox');
+    const champ = screen.getByRole('combobox');
 
     await utilisateur.type(champ, 'Pa');
     await avancer(350);
@@ -116,7 +116,7 @@ describe('US C1 : frappe et annulation', () => {
     const utilisateur = taper();
 
     render(<AutocompleteSearch onSelect={() => {}} />);
-    await utilisateur.type(screen.getByRole('textbox'), 'P');
+    await utilisateur.type(screen.getByRole('combobox'), 'P');
     await avancer(400);
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -128,7 +128,7 @@ describe('US C1 : frappe et annulation', () => {
     const utilisateur = taper();
 
     render(<AutocompleteSearch onSelect={() => {}} />);
-    await utilisateur.type(screen.getByRole('textbox'), 'Paris');
+    await utilisateur.type(screen.getByRole('combobox'), 'Paris');
     await avancer(400);
 
     expect(await screen.findByText(/La recherche n’a pas abouti/)).toBeVisible();
@@ -143,10 +143,10 @@ describe('US C1 : frappe et annulation', () => {
     const utilisateur = taper();
 
     render(<AutocompleteSearch onSelect={() => {}} />);
-    await utilisateur.type(screen.getByRole('textbox'), 'Amp');
+    await utilisateur.type(screen.getByRole('combobox'), 'Amp');
     await avancer(400);
 
-    expect(await screen.findByRole('button', { name: 'Amputée' })).toBeVisible();
+    expect(await screen.findByRole('option', { name: 'Amputée' })).toBeVisible();
     expect(document.body.textContent).not.toContain('undefined');
   });
 });
