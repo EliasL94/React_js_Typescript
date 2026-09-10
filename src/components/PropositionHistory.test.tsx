@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { normaliserCommune } from '../domain/commune';
 import { compareCommunes } from '../domain/game';
@@ -144,9 +145,28 @@ describe('US B3 : état de succès', () => {
   });
 
   it('affiche l’état initial tant qu’aucune proposition n’a été faite', () => {
-    render(<PropositionHistory propositions={[]} />);
+    render(
+      <MemoryRouter>
+        <PropositionHistory propositions={[]} />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText(/Comment jouer à Communle/)).toBeVisible();
     expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  // L'état initial résume les règles, il ne les recopie pas : la page dédiée
+  // reste la référence, et l'accueil doit y mener.
+  it('renvoie vers la page des règles depuis l’état initial', () => {
+    render(
+      <MemoryRouter>
+        <PropositionHistory propositions={[]} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('link', { name: /règles du jeu/i })).toHaveAttribute(
+      'href',
+      '/regles',
+    );
   });
 });

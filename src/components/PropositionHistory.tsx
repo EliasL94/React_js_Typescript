@@ -52,16 +52,16 @@ export default function PropositionHistory({
         <CallOut
           title="Comment jouer à Communle ?"
           iconId="fr-icon-information-line"
+          buttonProps={{
+            children: 'Lire les règles du jeu',
+            linkProps: { to: '/regles' },
+            priority: 'secondary',
+          }}
         >
-          <span style={{ display: 'inline' }}>
-            Le but du jeu est de deviner la commune mystère du jour en un minimum d'essais.
-            À chaque proposition, vous obtiendrez trois indices pour vous aider :
-            <br /><br />
-            <strong>- Distance :</strong> la distance à vol d'oiseau entre votre proposition et la commune mystère.<br />
-            <strong>- Direction :</strong> la direction à suivre pour s'en rapprocher (Nord, Sud, Est, Ouest...).<br />
-            <strong>- Population :</strong> si la commune mystère est plus ou moins peuplée que votre proposition.<br /><br />
-            <em>Utilisez la barre de recherche ci-dessus pour faire votre première tentative !</em>
-          </span>
+          Proposez une commune française dans le champ ci-dessus. À chaque essai,
+          Communle vous répond par trois indices — la distance, la direction et la
+          population — jusqu’à ce que vous trouviez la commune mystère du jour, en{' '}
+          {nbEssaisMax} essais au maximum.
         </CallOut>
       </div>
     );
