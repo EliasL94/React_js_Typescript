@@ -71,6 +71,8 @@ export function AccueilPage() {
 
       if (hasWon) {
         navigate(construireCheminResultat(mysteryCommune.code, { statut: 'gagne', essais: newPropositions.length }));
+      } else if (newPropositions.length >= 6) {
+        navigate(construireCheminResultat(mysteryCommune.code, { statut: 'perdu', essais: 6 }));
       }
     }
 

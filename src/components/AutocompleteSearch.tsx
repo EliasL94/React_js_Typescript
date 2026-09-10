@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
 import { Input } from "@codegouvfr/react-dsfr/Input";
 import type { Commune } from "../domain/commune";
 import { rechercherCommunes } from "../domain/commune";
@@ -12,9 +11,7 @@ interface AutocompleteSearchProps {
 import { Alert } from "@codegouvfr/react-dsfr/Alert";
 
 export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteSearchProps) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const query = searchParams.get("q") || "";
-  const [inputValue, setInputValue] = useState(query);
+  const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<Commune[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -27,15 +24,6 @@ export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteS
       setIsSearching(false);
       setResults([]);
     }
-
-    setSearchParams(prev => {
-      if (newQuery) {
-        prev.set("q", newQuery);
-      } else {
-        prev.delete("q");
-      }
-      return prev;
-    }, { replace: true });
   };
 
   // Debounce simple pour ne pas spammer l'API
