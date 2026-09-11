@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Le routage est côté navigateur : sans cette réécriture, ouvrir directement
+# /regles ou /partie/75056 — c'est-à-dire suivre un lien partagé, ce que
+# l'US A3 demande — renverrait un 404 du serveur au lieu de la page.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

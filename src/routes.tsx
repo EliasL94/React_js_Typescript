@@ -10,6 +10,7 @@ import { AccueilPage } from './pages/AccueilPage';
 import { ChargementPage } from './pages/ChargementPage';
 import { ErreurRoute } from './pages/ErreurRoute';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { ReglesPage } from './pages/ReglesPage';
 import { ResultatPage } from './pages/ResultatPage';
 
 export type DonneesResultat = { commune: Commune };
@@ -40,6 +41,7 @@ export const routes: RouteObject[] = [
     element: <Layout />,
     children: [
       { index: true, element: <AccueilPage /> },
+      { path: 'regles', element: <ReglesPage /> },
       {
         path: 'partie/:codeInsee',
         element: <ResultatPage />,

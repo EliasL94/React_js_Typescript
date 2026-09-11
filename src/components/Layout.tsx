@@ -4,7 +4,7 @@ import { fr } from '@codegouvfr/react-dsfr/fr';
 import { Header } from '@codegouvfr/react-dsfr/Header';
 import { Notice } from '@codegouvfr/react-dsfr/Notice';
 import { SkipLinks } from '@codegouvfr/react-dsfr/SkipLinks';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 const BRAND_TOP = (
   <>
@@ -17,6 +17,8 @@ const BRAND_TOP = (
 const LIEN_ACCUEIL = { to: '/', title: 'Accueil — Communle' };
 
 export function Layout() {
+  const { pathname } = useLocation();
+
   return (
     <>
       <SkipLinks
@@ -32,6 +34,18 @@ export function Layout() {
         serviceTitle="Communle"
         serviceTagline="Trouvez la commune mystère du jour"
         quickAccessItems={[headerFooterDisplayItem]}
+        navigation={[
+          {
+            text: 'Jouer',
+            linkProps: { to: '/' },
+            isActive: pathname === '/',
+          },
+          {
+            text: 'Règles du jeu',
+            linkProps: { to: '/regles' },
+            isActive: pathname === '/regles',
+          },
+        ]}
       />
 
       <Notice

@@ -8,3 +8,44 @@ body {
 #contenu {
   flex: 1 0 auto;
 }
+
+.autocomplete {
+  position: relative;
+}
+
+.autocomplete-panneau {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background-color: var(--background-default-grey);
+  border: 1px solid var(--border-default-grey);
+  box-shadow: var(--overlap-shadow);
+}
+
+.autocomplete-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.autocomplete-option {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-default-grey);
+  cursor: pointer;
+}
+
+.autocomplete-option:hover {
+  background-color: var(--background-alt-grey);
+}
+
+/* L'option active est désignée par aria-activedescendant : le focus réel
+   reste sur le champ, il faut donc la marquer visuellement nous-mêmes. */
+.autocomplete-option--active {
+  background-color: var(--background-open-blue-france);
+  outline: 2px solid var(--border-active-blue-france);
+  outline-offset: -2px;
+}

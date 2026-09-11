@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Input } from "@codegouvfr/react-dsfr/Input";
+import { Alert } from "@codegouvfr/react-dsfr/Alert";
 import type { Commune } from "../domain/commune";
 import { rechercherCommunes } from "../domain/commune";
 
@@ -8,111 +9,180 @@ interface AutocompleteSearchProps {
   disabled?: boolean;
 }
 
-import { Alert } from "@codegouvfr/react-dsfr/Alert";
+const DELAI_DEBOUNCE_MS = 300;
+const LONGUEUR_MINIMALE = 2;
 
 export default function AutocompleteSearch({ onSelect, disabled }: AutocompleteSearchProps) {
   const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<Commune[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [enErreur, setEnErreur] = useState(false);
+  const [indexActif, setIndexActif] = useState(-1);
+  const [listeFermee, setListeFermee] = useState(false);
 
-  const handleQueryChange = (newQuery: string) => {
-    setInputValue(newQuery);
-    
-    if (newQuery.length >= 2) {
-      setIsSearching(true);
-    } else {
-      setIsSearching(false);
+  const idListe = useId();
+  const optionId = (index: number) => `${idListe}-option-${index}`;
+
+  // Numéro de la recherche en cours. Une réponse qui revient avec un numéro
+  // périmé est jetée : sans ça, une requête lente partie avant une autre
+  // écrase le résultat le plus récent quand elle finit par arriver.
+  const rechercheCourante = useRef(0);
+
+  // L'état de la saisie est décidé par la frappe elle-même, pas par l'effet :
+  // l'indicateur de recherche apparaît ainsi dès la première touche.
+  const auChangement = (valeur: string) => {
+    setInputValue(valeur);
+    setEnErreur(false);
+    setIndexActif(-1);
+    setListeFermee(false);
+
+    if (valeur.length < LONGUEUR_MINIMALE) {
+      rechercheCourante.current += 1;
       setResults([]);
+      setIsSearching(false);
+    } else {
+      setIsSearching(true);
     }
   };
 
-  // Debounce simple pour ne pas spammer l'API
   useEffect(() => {
-    if (inputValue.length < 2) {
-      setResults([]);
-      setIsSearching(false);
+    if (inputValue.length < LONGUEUR_MINIMALE) return;
+
+    const numero = ++rechercheCourante.current;
+    const controleur = new AbortController();
+
+    const minuterie = setTimeout(async () => {
+      try {
+        const communes = await rechercherCommunes(inputValue, {
+          signal: controleur.signal,
+        });
+        if (numero !== rechercheCourante.current) return;
+        setResults(communes);
+        setIsSearching(false);
+      } catch (erreur) {
+        // Une annulation n'est pas une panne : la frappe suivante a pris le relais.
+        if (erreur instanceof DOMException && erreur.name === "AbortError") return;
+        if (numero !== rechercheCourante.current) return;
+        setResults([]);
+        setEnErreur(true);
+        setIsSearching(false);
+      }
+    }, DELAI_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(minuterie);
+      controleur.abort();
+    };
+  }, [inputValue]);
+
+  const choisir = (commune: Commune) => {
+    rechercheCourante.current += 1;
+    onSelect(commune);
+    setResults([]);
+    setIsSearching(false);
+    setInputValue("");
+    setIndexActif(-1);
+    setListeFermee(false);
+  };
+
+  const listeOuverte =
+    !listeFermee && inputValue.length >= LONGUEUR_MINIMALE;
+  const optionsNavigables = listeOuverte && !isSearching && !enErreur && results.length > 0;
+
+  const auClavier = (evenement: React.KeyboardEvent<HTMLInputElement>) => {
+    if (evenement.key === "Escape") {
+      setListeFermee(true);
+      setIndexActif(-1);
       return;
     }
 
-    const delayDebounceFn = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const communes = await rechercherCommunes(inputValue);
-        setResults(communes);
-      } catch (err) {
-        setResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300); // Attend 300ms après la dernière frappe
+    if (!optionsNavigables) return;
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [inputValue]);
+    if (evenement.key === "ArrowDown") {
+      evenement.preventDefault();
+      setIndexActif((actuel) => (actuel + 1) % results.length);
+      return;
+    }
+
+    if (evenement.key === "ArrowUp") {
+      evenement.preventDefault();
+      setIndexActif((actuel) => (actuel <= 0 ? results.length - 1 : actuel - 1));
+      return;
+    }
+
+    if (evenement.key === "Enter" && indexActif >= 0) {
+      evenement.preventDefault();
+      choisir(results[indexActif]);
+    }
+  };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div className="autocomplete">
       <div aria-live="polite" aria-busy={isSearching}>
         <Input
           label="Proposer une commune"
           hintText="Exemple : Paris, Toulouse..."
           nativeInputProps={{
             value: inputValue,
-            onChange: (e) => handleQueryChange(e.target.value),
+            onChange: (e) => auChangement(e.target.value),
+            onKeyDown: auClavier,
             disabled: disabled,
             autoComplete: "off",
-            placeholder: "Tapez le nom d'une commune..."
+            placeholder: "Tapez le nom d’une commune...",
+            role: "combobox",
+            "aria-expanded": optionsNavigables,
+            "aria-controls": idListe,
+            "aria-autocomplete": "list",
+            "aria-activedescendant":
+              indexActif >= 0 ? optionId(indexActif) : undefined,
           }}
         />
-        
-        {/* Affichage des résultats en dessous */}
-        {inputValue.length >= 2 && (
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              background: "var(--background-default-grey)",
-              border: "1px solid var(--border-default-grey)",
-              zIndex: 10,
-              boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-            }}
-          >
+
+        {listeOuverte && (
+          <div className="autocomplete-panneau">
             {isSearching ? (
-              <div style={{ padding: "1rem", textAlign: "center", fontStyle: "italic", color: "var(--text-mention-grey)" }}>
-                Recherche en cours...
+              <p className="fr-p-2w fr-mb-0">Recherche en cours...</p>
+            ) : enErreur ? (
+              <div className="fr-p-2w">
+                <Alert
+                  severity="error"
+                  title="La recherche n’a pas abouti"
+                  description="Le service qui fournit les communes ne répond pas. Vérifiez votre connexion, puis retapez votre recherche."
+                  small
+                />
               </div>
             ) : results.length > 0 ? (
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, maxHeight: "300px", overflowY: "auto" }}>
-                {results.map((c) => (
+              <ul className="autocomplete-liste" id={idListe} role="listbox" aria-label="Communes proposées">
+                {results.map((c, index) => (
                   <li
                     key={c.code}
-                    style={{ padding: "0.5rem 1rem", cursor: "pointer", borderBottom: "1px solid var(--border-alt-grey)" }}
-                    onClick={() => {
-                      onSelect(c);
-                      setResults([]);
-                      setIsSearching(false);
-                      setInputValue("");
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = "var(--background-alt-grey)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = "transparent";
+                    id={optionId(index)}
+                    role="option"
+                    aria-selected={index === indexActif}
+                    className={
+                      index === indexActif
+                        ? "autocomplete-option autocomplete-option--active"
+                        : "autocomplete-option"
+                    }
+                    onMouseDown={(e) => {
+                      // Empêche le champ de perdre le focus avant la sélection.
+                      e.preventDefault();
+                      choisir(c);
                     }}
                   >
-                    {c.nom} ({c.departement?.nom})
+                    {c.nom}
+                    {c.departement !== null && ` (${c.departement.nom})`}
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="fr-p-2w" style={{ padding: "1rem" }}>
-                 <Alert
-                   severity="info"
-                   title={`Aucun résultat pour "${inputValue}"`}
-                   description="Vérifiez l'orthographe ou essayez un nom de commune plus générique."
-                   small
-                 />
+              <div className="fr-p-2w">
+                <Alert
+                  severity="info"
+                  title={`Aucun résultat pour "${inputValue}"`}
+                  description="Vérifiez l’orthographe ou essayez un nom de commune plus générique."
+                  small
+                />
               </div>
             )}
           </div>
